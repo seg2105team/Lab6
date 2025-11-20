@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 )
 
 type FetchResult struct {
@@ -12,10 +14,18 @@ type FetchResult struct {
 }
 
 func worker(id int, jobs <-chan string, results chan<- FetchResult) {
-	defer wg.Done()
-	// TODO: fetch the URL
-	// TODO: send result struct to results channel
-	// hint: use resp, err := http.Get(url)
+	resp, err := http.Get(<-jobs)
+	if err != nil {
+		results <- FetchResult{URL: <-jobs, Error: err}
+		return
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	results <- FetchResult{
+		URL:        resp.Request.URL.String(),
+		StatusCode: resp.StatusCode,
+		Size:       len(body),
+	}
 }
 
 func main() {
@@ -27,7 +37,7 @@ func main() {
 		"https://httpbin.org/get",
 	}
 
-	numWorkers := 3
+	numWorkers := 5
 
 	jobs := make(chan string, len(urls))
 	results := make(chan FetchResult, len(urls))
@@ -45,7 +55,8 @@ func main() {
 
 	// collect results
 	for i := 1; i <= len(urls); i++ {
-		fmt.Println("Result:", <-results)
+		result := <-results
+		fmt.Println(result.URL, "|", result.StatusCode, "|", result.Size)
 	}
 
 	fmt.Println("\n Scraping complete!")
