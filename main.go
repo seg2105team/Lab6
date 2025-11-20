@@ -32,11 +32,21 @@ func main() {
 	jobs := make(chan string, len(urls))
 	results := make(chan FetchResult, len(urls))
 
-	// TODO: start workers
+	//start workers
+	for w := 1; w <= numWorkers; w++ {
+		go worker(w, jobs, results)
+	}
 
-	// TODO: send jobs
+	// send jobs
+	for j := 1; j <= len(urls); j++ {
+		jobs <- urls[j-1]
+	}
+	close(jobs)
 
-	// TODO: collect results
+	// collect results
+	for i := 1; i <= len(urls); i++ {
+		fmt.Println("Result:", <-results)
+	}
 
 	fmt.Println("\n Scraping complete!")
 }
